@@ -4,12 +4,18 @@ static Window *s_main_window;
 static TextLayer *s_time_layer;
 static TextLayer *s_dilo_layer;
 
+/*
+
+Here's the ugle hardcoded data, 1st array is the text shown on the watch face, second array is the hh, mm at when that display is first shown
+
+*/
+
 const char *dilo_activities[] = {    "SLEEP",  "TEA",  "BREAKFAST", "MAIL",  "PLAN", "WORK",  "DOG",  "LUNCH", "WORK",  "RUN",  "CLOSE", "KITCHEN",  "SUPPER",  "FAMILY",  "TEETH", "SLEEP"};
 const int dilo_start_times[17][2] = {{0,0},    {6,0},  {7,30},      {8,30},  {9,0},  {9,30},  {12,0},  {13,0},  {13,30},{16,0},  {17,0},  {17,15},  {18,0},    {19,0},    {22,0},     {22,30}, {25,0}};
 
 static int get_dilo_index(int h,int m) {
   
-  int i =0;
+  int i = 0;
   int now_in_min;
   int start_in_min;
   int end_in_min;
