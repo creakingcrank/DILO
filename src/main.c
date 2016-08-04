@@ -3,29 +3,77 @@
 static Window *s_main_window;
 static TextLayer *s_time_layer;
 static TextLayer *s_dilo_layer;
+static TextLayer *s_rem_layer;
 
-const char *dilo_activities[] = {    "SLEEP",  "TEA",  "BREAKFAST", "MAIL",  "PLAN", "WORK",  "DOG",  "LUNCH", "WORK",  "RUN",  "CLOSE", "KITCHEN",  "SUPPER",  "FAMILY",  "TEETH", "SLEEP"};
-const int dilo_start_times[17][2] = {{0,0},    {6,0},  {7,30},      {8,30},  {9,0},  {9,30},  {12,0},  {13,0},  {13,30},{16,0},  {17,0},  {17,15},  {18,0},    {19,0},    {22,0},     {22,30}, {25,0}};
+typedef struct {
+  char *activity;
+  int start_h;
+  int start_m;
+}dilo_data;
+
+/*
+
+Maybe obvious, but format is: ACTIVITY,START HOUR,START MINS
+
+*/
+
+dilo_data d_data[] =
+  {
+    {"SLEEP",0,0},
+    {"TEA",6,0},
+    {"BREAKFAST",7,30},
+    {"MAIL",8,30},
+    {"PLAN",9,0},
+    {"WORK",9,30},
+    {"DOG",12,0},
+    {"LUNCH",13,0},
+    {"MAIL",13,30},  
+    {"WORK",13,45},
+    {"RUN",16,0},
+    {"CLOSE",17,00},
+    {"KITCHEN",17,15},
+    {"SUPPER",18,0},
+    {"FAMILY",19,0},
+    {"TEETH",22,0},
+    {"SLEEP",22,30},
+    {"END",25,0}     //DON'T REMOVE, USED TO DETECT END OF LIST
+  };
+
+
 
 static int get_dilo_index(int h,int m) {
   
-  int i =0;
+  int i = 0;
   int now_in_min;
   int start_in_min;
   int end_in_min;
   
-  while(dilo_start_times[i][0]<24) {
+  while(d_data[i].start_h<24) {
    
     now_in_min = 60*h+m;
-    start_in_min = 60*dilo_start_times[i][0]+dilo_start_times[i][1];
-    end_in_min  = 60*dilo_start_times[i+1][0]+dilo_start_times[i+1][1];
+    start_in_min = 60*d_data[i].start_h+d_data[i].start_m;
+    end_in_min  = 60*d_data[i+1].start_h+d_data[i+1].start_m;
     if ( (now_in_min >= start_in_min) && (now_in_min < end_in_min)) return i;
     i++;
   }
   return 0;
 }
 
+static int mins_to_end(int i, int h, int m) {
+  
+  int now_in_min;
+  int end_in_min;
+  
+  now_in_min = 60*h+m;
+  end_in_min  = 60*d_data[i+1].start_h+d_data[i+1].start_m;
+  
+  return end_in_min - now_in_min;
+}
+
 static void update_dilo(struct tm *tick_time) {
+  
+
+  static char rem_text_to_display[24];
   
   static int dilo_index = 0;
   int new_dilo_index = get_dilo_index(tick_time->tm_hour, tick_time->tm_min);
@@ -34,8 +82,11 @@ static void update_dilo(struct tm *tick_time) {
     if (( tick_time->tm_hour > 7 ) && ( tick_time->tm_hour < 22 )) vibes_short_pulse();
     dilo_index = new_dilo_index;
   }
+ 
+  text_layer_set_text(s_dilo_layer, d_data[dilo_index].activity);
   
-  text_layer_set_text(s_dilo_layer, dilo_activities[dilo_index]);
+  snprintf(rem_text_to_display,sizeof(rem_text_to_display),"(%dm)",mins_to_end(dilo_index,tick_time->tm_hour, tick_time->tm_min));
+  text_layer_set_text(s_rem_layer, rem_text_to_display);
   
 }
 
@@ -90,15 +141,30 @@ static void main_window_load(Window *window) {
   text_layer_set_text(s_dilo_layer, "READY");
   text_layer_set_font(s_dilo_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28));
   text_layer_set_text_alignment(s_dilo_layer, GTextAlignmentCenter);
+  
+   // Create a TextLayer for the TIME REMAINING information
+  s_rem_layer = text_layer_create( 
+    GRect(0, PBL_IF_ROUND_ELSE(140, 134), bounds.size.w, 50));
+  
+  // Improve the layout to be more like a watchface
+  text_layer_set_background_color(s_rem_layer, GColorClear);
+  text_layer_set_text_color(s_rem_layer, GColorBlack);
+  text_layer_set_text(s_rem_layer, "(000m)");
+  text_layer_set_font(s_rem_layer, fonts_get_system_font(FONT_KEY_GOTHIC_28));
+  text_layer_set_text_alignment(s_rem_layer, GTextAlignmentCenter);
 
   // Add them as  children layer to the Window's root layer
   layer_add_child(window_layer, text_layer_get_layer(s_time_layer));
   layer_add_child(window_layer, text_layer_get_layer(s_dilo_layer));
+  layer_add_child(window_layer, text_layer_get_layer(s_rem_layer));
 }
 
 static void main_window_unload(Window *window) {
   // Destroy TextLayer
   text_layer_destroy(s_time_layer);
+  text_layer_destroy(s_dilo_layer);
+  text_layer_destroy(s_rem_layer);
+  
 }
 
 
